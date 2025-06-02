@@ -1,17 +1,17 @@
 import requests
 import datetime
+import os
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, ContextTypes,
     JobQueue, CallbackContext
 )
 
-# Substitua com seu token do BotFather
-TELEGRAM_TOKEN = '7558870387:AAFRVajR8Whb_4VSWJDxjg2U4NB5cNdrfxY'
-API_FOOTBALL_KEY = 'SUA_CHAVE_API_FOOTBALL'
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+API_FOOTBALL_KEY = os.getenv('API_FOOTBALL_KEY')
+CHAT_ID = os.getenv('CHAT_ID')
 API_HOST = 'v3.football.api-sports.io'
 
-# Função para buscar jogos do dia atual
 def get_today_fixtures():
     today = datetime.date.today().isoformat()
     url = "https://v3.football.api-sports.io/fixtures"
@@ -23,7 +23,6 @@ def get_today_fixtures():
     response = requests.get(url, headers=headers, params=params)
     return response.json()
 
-# Função para buscar estatísticas do jogo
 def get_match_stats(fixture_id):
     url = "https://v3.football.api-sports.io/fixtures/statistics"
     params = {"fixture": fixture_id}
@@ -34,7 +33,6 @@ def get_match_stats(fixture_id):
     response = requests.get(url, headers=headers, params=params)
     return response.json()
 
-# Comando para listar jogos do dia
 async def hoje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = get_today_fixtures()
     fixtures = data.get("response", [])
@@ -53,10 +51,9 @@ async def hoje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg += "\nUse /analisar <ID> para ver a análise de um jogo."
     await update.message.reply_text(msg)
 
-# Função para estimar probabilidades e médias
 def gerar_analise(fixture_id):
-    data = get_match_stats(fixture_id)
-
+    # Aqui você pode fazer chamadas reais para obter dados e gerar análise
+    # Para exemplo, dados mock
     time1 = "Time A"
     time2 = "Time B"
     gols1 = 1.6
@@ -86,7 +83,6 @@ def gerar_analise(fixture_id):
     msg += f"💡 Sugestão de aposta:\n{sugestao} (Chance: {chance}%)"
     return msg
 
-# Comando /analisar manual
 async def analisar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Use o comando assim: /analisar <ID do jogo>")
@@ -96,9 +92,8 @@ async def analisar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = gerar_analise(fixture_id)
     await update.message.reply_text(msg)
 
-# Envia análises automaticamente todo dia
 async def auto_analise(context: CallbackContext):
-    chat_id = '7558870387'  # Coloque aqui o ID do grupo ou usuário
+    chat_id = CHAT_ID
     data = get_today_fixtures()
     fixtures = data.get("response", [])
 
@@ -106,18 +101,20 @@ async def auto_analise(context: CallbackContext):
         await context.bot.send_message(chat_id=chat_id, text="Nenhum jogo encontrado para hoje.")
         return
 
-    for fix in fixtures[:3]:  # Limita a 3 jogos
+    for fix in fixtures[:3]:
         fixture_id = fix['fixture']['id']
         msg = gerar_analise(fixture_id)
         await context.bot.send_message(chat_id=chat_id, text=msg)
 
-# Inicializa o bot
-app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-app.add_handler(CommandHandler("analisar", analisar))
-app.add_handler(CommandHandler("hoje", hoje))
+def main():
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(CommandHandler("analisar", analisar))
+    app.add_handler(CommandHandler("hoje", hoje))
 
-# Agenda a tarefa automática às 11h diariamente
-job_queue = app.job_queue
-job_queue.run_daily(auto_analise, time=datetime.time(hour=11, minute=0, second=0))
+    job_queue = app.job_queue
+    job_queue.run_daily(auto_analise, time=datetime.time(hour=11, minute=0, second=0))
 
-app.run_polling()
+    app.run_polling()
+
+if __name__ == '__main__':
+    main()
