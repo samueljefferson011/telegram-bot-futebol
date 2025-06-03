@@ -1,16 +1,14 @@
+import os
 import requests
 import datetime
 from telegram import Update
-from telegram.ext import (
-    ApplicationBuilder, CommandHandler, ContextTypes
-)
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-# Substitua com seu token do BotFather
-TELEGRAM_TOKEN = '7558870387:AAFRVajR8Whb_4VSWJDxjg2U4NB5cNdrfxY'
-API_FOOTBALL_KEY = 'SUA_CHAVE_API_FOOTBALL'
+# Pegando tokens das variáveis de ambiente
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+API_FOOTBALL_KEY = os.getenv("API_FOOTBALL_KEY")
 API_HOST = 'v3.football.api-sports.io'
 
-# Função para buscar jogos do dia atual
 def get_today_fixtures():
     today = datetime.date.today().isoformat()
     url = "https://v3.football.api-sports.io/fixtures"
@@ -22,7 +20,6 @@ def get_today_fixtures():
     response = requests.get(url, headers=headers, params=params)
     return response.json()
 
-# Função para buscar estatísticas do jogo
 def get_match_stats(fixture_id):
     url = "https://v3.football.api-sports.io/fixtures/statistics"
     params = {"fixture": fixture_id}
@@ -33,7 +30,6 @@ def get_match_stats(fixture_id):
     response = requests.get(url, headers=headers, params=params)
     return response.json()
 
-# Comando para listar jogos do dia
 async def hoje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = get_today_fixtures()
     fixtures = data.get("response", [])
@@ -52,7 +48,6 @@ async def hoje(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg += "\nUse /analisar <ID> para ver a análise de um jogo."
     await update.message.reply_text(msg)
 
-# Função para estimar probabilidades e médias
 def gerar_analise(fixture_id):
     data = get_match_stats(fixture_id)
 
@@ -85,7 +80,6 @@ def gerar_analise(fixture_id):
     msg += f"💡 Sugestão de aposta:\n{sugestao} (Chance: {chance}%)"
     return msg
 
-# Comando /analisar manual
 async def analisar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text("Use o comando assim: /analisar <ID do jogo>")
@@ -95,11 +89,11 @@ async def analisar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = gerar_analise(fixture_id)
     await update.message.reply_text(msg)
 
-# Inicializa o bot
-app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-app.add_handler(CommandHandler("analisar", analisar))
-app.add_handler(CommandHandler("hoje", hoje))
-
-app.run_polling()
-
+if TELEGRAM_TOKEN:
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(CommandHandler("analisar", analisar))
+    app.add_handler(CommandHandler("hoje", hoje))
+    app.run_polling()
+else:
+    print("❌ ERRO: TELEGRAM_TOKEN não encontrado nas variáveis de ambiente.")
 
